@@ -1,0 +1,10 @@
+name: "tool-reading-firecrawl-exa"
+tool_command: "python"
+args:
+  - "-m"
+  - "src.tool.mcp_servers.reading_mcp_server_firecrawl_exa"
+env:
+# API keys - these values will be loaded from the .env file at runtime
+  FIRECRAWL_API_KEY: "${oc.env:FIRECRAWL_API_KEY}"
+  EXA_API_KEY: "${oc.env:EXA_API_KEY}"
+

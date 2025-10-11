@@ -1,0 +1,73 @@
+defaults:
+  - benchmark: futurex_past
+  - override hydra/job_logging: none
+  - _self_
+
+
+main_agent:
+  prompt_class: MainAgentPromptBoxedAnswer
+  llm: 
+    # 使用 GPT5OpenAIClient（兼容 OpenRouter）
+    provider_class: "GPT5OpenAIClient"
+    
+    # OpenRouter 上的 GPT-5 模型名称
+    model_name: "openai/gpt-5"
+    
+    async_client: true
+    
+    # GPT-5 推理模型固定使用 temperature=1.0
+    temperature: 1.0
+    top_p: 1.0
+    min_p: 0.0
+    top_k: -1
+    
+    # 🚀 优化1: 减少 max_tokens 以加快推理速度
+    max_tokens: 16000  # 从 32000 降低到 16000
+    
+    # 🚀 优化2: 使用更快的 reasoning_effort
+    reasoning_effort: "low"  # 保持 low（最快）
+    
+    # 🔑 关键修改：使用 OpenRouter API
+    openai_api_key: "${oc.env:OPENROUTER_API_KEY,???}"
+    openai_base_url: "${oc.env:OPENROUTER_BASE_URL,https://openrouter.ai/api/v1}"
+    
+    # OpenRouter 特定设置
+    openrouter_provider: ""  # OpenRouter 会自动路由
+    
+    # GPT-5 需要禁用 cache control
+    disable_cache_control: true
+    
+    keep_tool_result: -1
+    oai_tool_thinking: false
+  
+  # 组合配置：使用 Firecrawl + Exa 进行搜索和文件阅读
+  tool_config:
+    - tool-searching-firecrawl-exa  # AI 搜索（Exa）+ 网页抓取（Firecrawl）
+    - tool-reading-firecrawl-exa    # 文件阅读 + 网页抓取（使用 Firecrawl）
+
+  # 🚀 优化3: 限制最大轮次（防止过度搜索）
+  max_turns: 6  # 从 -1（无限制）改为 6 轮
+  
+  # 🚀 优化4: 限制每轮工具调用次数
+  max_tool_calls_per_turn: 6  # 从 10 降低到 8
+  
+  input_process:
+    hint_generation: false
+    hint_llm_base_url: "${oc.env:HINT_LLM_BASE_URL,https://api.openai.com/v1}"
+  output_process:
+    final_answer_extraction: false
+    final_answer_llm_base_url: "${oc.env:FINAL_ANSWER_LLM_BASE_URL,https://api.openai.com/v1}"
+
+  openai_api_key: "${oc.env:OPENROUTER_API_KEY,???}"  # 注意：这里也用 OPENROUTER_API_KEY
+  add_message_id: true
+  keep_tool_result: -1
+  chinese_context: "${oc.env:CHINESE_CONTEXT,false}"
+
+
+sub_agents: null
+
+# Can define some top-level or default parameters here
+output_dir: logs/futurex_past_fast/
+data_dir: "${oc.env:DATA_DIR,data}"
+
+

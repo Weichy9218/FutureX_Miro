@@ -1,0 +1,22 @@
+# config/benchmark/futurex_past.yaml
+defaults:
+  - default
+  - _self_
+
+name: "futurex-past"
+
+data:
+  data_dir: "${data_dir}/futurex"  # Path to your dataset
+  metadata_file: "standardized_data_past.jsonl"  # Metadata filename
+  whitelist: []  # Optional: List of specific task_ids to run
+
+execution:
+  max_tasks: null      # null = no limit, or specify a number
+  max_concurrent: 8    # Number of parallel tasks
+  pass_at_k: 1         # Number of attempts per task (fixed at 1)
+
+# LLM-based evaluation settings:
+# - Set to "skip_evaluation" to skip LLM judge verification
+# - Set to a valid OpenAI API key to enable LLM-based answer verification
+openai_api_key: "skip_evaluation"
+
