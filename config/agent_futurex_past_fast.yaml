@@ -67,7 +67,8 @@ main_agent:
 sub_agents: null
 
 # Can define some top-level or default parameters here
-output_dir: logs/futurex_past_fast/
+# 使用 ??? 表示此参数可以从命令行覆盖，如果没有提供则使用默认值
+output_dir: ${output_dir:logs/futurex_past_fast}
 data_dir: "${oc.env:DATA_DIR,data}"
 
 
