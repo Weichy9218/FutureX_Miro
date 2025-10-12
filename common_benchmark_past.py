@@ -190,30 +190,38 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
 
 1️⃣ When using search tools with time filters:
    
-   Option A - exa_search (AI-powered search):
+   Option A - exa_search (✅ RECOMMENDED - Most Reliable):
    - ALWAYS set: end_published_date="{end_date}"
    - Example: exa_search(q="...", end_published_date="{end_date}")
+   - AI-powered semantic search with excellent time filtering
+   - Most stable and reliable for historical data
    
-   Option B - firecrawl_search_before (Google-based search with time constraint):
+   Option B - firecrawl_search (Google-based search with time constraint):
    - ALWAYS set: end_time="{end_date}"
-   - Example: firecrawl_search_before(q="...", end_time="{end_date}")
-   - This tool AUTOMATICALLY filters results to be before the specified date
-   - Recommended for Japanese content or regional searches
+   - Example: firecrawl_search(q="...", end_time="{end_date}")
+   - Uses Google Custom Search with date filtering
+   - Good for region-specific or Chinese content
+   - May occasionally timeout - if it fails, use exa_search instead
 
-2️⃣ 🚫 CRITICAL - NEVER use scrape_website:
-   - scrape_website fetches CURRENT webpage content (from {datetime.datetime.today().strftime("%Y-%m-%d")})
-   - Current webpages often contain links/content from after {end_time}
-   - You MUST use search_archived_webpage instead
-   - Extract year, month, day from {end_time}
-   - Example: search_archived_webpage(url="...", year={end_time.split('-')[0]}, month={end_time.split('-')[1]}, day={end_time.split('-')[2].split('T')[0]})
+2️⃣ For historical content retrieval:
+   - Use exa_search with end_published_date for most cases
+   - Use firecrawl_search for region/language-specific searches
+   - Use search_wiki_revision for Wikipedia historical versions
+   - For specific URLs: Use exa_search to find articles/reports about that content from before {end_time}
 
-3️⃣ For ANY content retrieval:
-   - ONLY use: exa_search (with end_published_date), firecrawl_search_before (with end_time), or search_archived_webpage
-   - Never use scrape_website under any circumstances
+3️⃣ Available tools for historical research:
+   ✅ exa_search(q="...", end_published_date="{end_date}") - Primary tool
+   ✅ firecrawl_search(q="...", end_time="{end_date}") - Alternative
+   ✅ wiki_get_page_content(entity="...") - Current Wikipedia content
+   ✅ search_wiki_revision(entity="...", year=YYYY, month=MM) - Wikipedia history
 
-⚠️  VIOLATION WARNING:
-Using scrape_website or ANY information published after {end_time} will invalidate your prediction.
-This is a strict requirement for fair evaluation.
+
+
+⚠️  IMPORTANT GUIDELINES:
+- If firecrawl_search fails with timeout/error, immediately switch to exa_search
+- Never retry a failed tool multiple times - use alternatives
+- Focus on finding NEWS ARTICLES, REPORTS, or OFFICIAL STATISTICS from before {end_time}
+- Using information published after {end_time} will invalidate your prediction
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
@@ -605,4 +613,3 @@ def main(*args, config_file_name: str = ""):
 if __name__ == "__main__":
     import fire
     fire.Fire(main)
-

@@ -12,7 +12,7 @@ data:
 
 execution:
   max_tasks: null      # null = no limit, or specify a number
-  max_concurrent: 8    # Number of parallel tasks
+  max_concurrent: 10    # Number of parallel tasks
   pass_at_k: 1         # Number of attempts per task (fixed at 1)
 
 # LLM-based evaluation settings:

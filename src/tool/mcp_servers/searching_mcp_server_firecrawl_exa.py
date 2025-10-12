@@ -143,311 +143,258 @@ async def exa_search(
         return f"[ERROR]: Unexpected error in exa_search: {str(e)}"
 
 
-@mcp.tool()
-async def exa_find_similar(
-    url: str,
-    num_results: int = 5,  # 🚀 优化：从10降低到5
-    exclude_source_domain: bool = True,
-) -> str:
-    """Find content similar to a given URL using Exa's AI-powered similarity search.
-    This tool analyzes the content and context of the provided URL to find semantically similar web pages.
-
-    Args:
-        url: The URL to find similar content for.
-        num_results: Number of similar results to return (default: 10, max: 100).
-        exclude_source_domain: Whether to exclude results from the same domain as the source URL (default: True).
-
-    Returns:
-        JSON string containing similar content with titles, URLs, snippets, and similarity scores.
-    """
-    if not EXA_API_KEY:
-        return "[ERROR]: EXA_API_KEY is not set, exa_find_similar tool is not available."
-    
-    try:
-        api_url = "https://api.exa.ai/findSimilar"
-        
-        payload = {
-            "url": url,
-            "num_results": min(num_results, 8),
-            "exclude_source_domain": exclude_source_domain,
-            "contents": {
-                "text": True,
-                "highlights": True,
-            }
-        }
-        
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "x-api-key": EXA_API_KEY
-        }
-        
-        response = await asyncio.to_thread(
-            lambda: requests.post(api_url, json=payload, headers=headers, timeout=30)
-        )
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Format results
-        formatted_results = {
-            "source_url": url,
-            "num_results": len(data.get("results", [])),
-            "results": []
-        }
-        
-        for idx, result in enumerate(data.get("results", []), 1):
-            formatted_result = {
-                "position": idx,
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "published_date": result.get("published_date", ""),
-                "score": result.get("score", 0),
-                "text": result.get("text", "")[:500],
-                "highlights": result.get("highlights", [])[:3]
-            }
-            formatted_results["results"].append(formatted_result)
-        
-        return json.dumps(formatted_results, ensure_ascii=False, indent=2)
-        
-    except requests.exceptions.RequestException as e:
-        return f"[ERROR]: Failed to connect to Exa API: {str(e)}"
-    except Exception as e:
-        return f"[ERROR]: Unexpected error in exa_find_similar: {str(e)}"
-
-
 # @mcp.tool()
-# async def scrape_website(url: str) -> str:
-#     """Scrape a website and extract its content in LLM-friendly format using Firecrawl.
-#     Firecrawl converts web pages to clean Markdown format, removing ads, navigation, and other noise.
-#     This tool can also be used to get YouTube video non-visual information (e.g., titles, descriptions, subtitles, key moments),
-#     though the information may be incomplete. Search engines are not supported by this tool.
+# async def exa_find_similar(
+#     url: str,
+#     num_results: int = 5,  # 🚀 优化：从10降低到5
+#     exclude_source_domain: bool = True,
+# ) -> str:
+#     """Find content similar to a given URL using Exa's AI-powered similarity search.
+#     This tool analyzes the content and context of the provided URL to find semantically similar web pages.
 
 #     Args:
-#         url: The URL of the website to scrape.
+#         url: The URL to find similar content for.
+#         num_results: Number of similar results to return (default: 10, max: 100).
+#         exclude_source_domain: Whether to exclude results from the same domain as the source URL (default: True).
 
 #     Returns:
-#         The scraped website content in Markdown format, including title, description, and main content.
+#         JSON string containing similar content with titles, URLs, snippets, and similarity scores.
 #     """
-#     if not FIRECRAWL_API_KEY:
-#         return "[ERROR]: FIRECRAWL_API_KEY is not set, scrape_website tool is not available."
-    
-#     # Handle empty URL
-#     if not url or not url.strip():
-#         return "[ERROR]: Invalid URL: URL cannot be empty."
-    
-#     # Auto-add https:// if no protocol is specified
-#     protocol_hint = ""
-#     if not url.startswith(("http://", "https://")):
-#         original_url = url
-#         url = f"https://{url}"
-#         protocol_hint = f"[NOTE]: Automatically added 'https://' to URL '{original_url}' -> '{url}'\n\n"
-    
-#     # Check for restricted domains
-#     if "huggingface.co/datasets" in url or "huggingface.co/spaces" in url:
-#         return "[ERROR]: You are trying to scrape a Hugging Face dataset for answers. Please do not use the scrape tool for this purpose."
-    
-#     # YouTube hint
-#     youtube_hint = ""
-#     if "youtube.com/watch" in url or "youtube.com/shorts" in url or "youtube.com/live" in url:
-#         youtube_hint = "[NOTE]: If you need to get information about visual or audio content, please use tool 'visual_audio_youtube_analyzing' instead. This tool may not provide visual and audio content of a YouTube Video.\n\n"
+#     if not EXA_API_KEY:
+#         return "[ERROR]: EXA_API_KEY is not set, exa_find_similar tool is not available."
     
 #     try:
-#         # Firecrawl API endpoint
-#         api_url = "https://api.firecrawl.dev/v1/scrape"
+#         api_url = "https://api.exa.ai/findSimilar"
         
 #         payload = {
 #             "url": url,
-#             "formats": ["markdown"],
+#             "num_results": min(num_results, 8),
+#             "exclude_source_domain": exclude_source_domain,
+#             "contents": {
+#                 "text": True,
+#                 "highlights": True,
+#             }
 #         }
         
 #         headers = {
-#             "Authorization": f"Bearer {FIRECRAWL_API_KEY}",
-#             "Content-Type": "application/json"
+#             "accept": "application/json",
+#             "content-type": "application/json",
+#             "x-api-key": EXA_API_KEY
 #         }
         
 #         response = await asyncio.to_thread(
-#             lambda: requests.post(api_url, json=payload, headers=headers, timeout=120)
+#             lambda: requests.post(api_url, json=payload, headers=headers, timeout=30)
 #         )
 #         response.raise_for_status()
         
 #         data = response.json()
         
-#         # Check if successful
-#         if not data.get("success"):
-#             error_msg = data.get("error", "Unknown error")
-#             return f"[ERROR]: Firecrawl scraping failed: {error_msg}"
+#         # Format results
+#         formatted_results = {
+#             "source_url": url,
+#             "num_results": len(data.get("results", [])),
+#             "results": []
+#         }
         
-#         # Extract content
-#         result_data = data.get("data", {})
+#         for idx, result in enumerate(data.get("results", []), 1):
+#             formatted_result = {
+#                 "position": idx,
+#                 "title": result.get("title", ""),
+#                 "url": result.get("url", ""),
+#                 "published_date": result.get("published_date", ""),
+#                 "score": result.get("score", 0),
+#                 "text": result.get("text", "")[:500],
+#                 "highlights": result.get("highlights", [])[:3]
+#             }
+#             formatted_results["results"].append(formatted_result)
         
-#         # Build return result
-#         result_parts = [
-#             f"URL: {url}",
-#             f"Title: {result_data.get('metadata', {}).get('title', 'N/A')}",
-#             f"Description: {result_data.get('metadata', {}).get('description', 'N/A')[:200]}",
-#             ""
-#         ]
+#         return json.dumps(formatted_results, ensure_ascii=False, indent=2)
         
-#         # Add Markdown content
-#         if "markdown" in result_data:
-#             markdown_content = result_data["markdown"]
-#             # Limit length to avoid excessive output
-#             if len(markdown_content) > 15000:
-#                 markdown_content = markdown_content[:15000] + "\n\n... (content truncated due to length)"
-#             result_parts.append("Content (Markdown):")
-#             result_parts.append(markdown_content)
-#         else:
-#             result_parts.append("[ERROR]: No content extracted from the webpage.")
-        
-#         return protocol_hint + youtube_hint + "\n".join(result_parts)
-        
-#     except requests.exceptions.Timeout:
-#         return f"[ERROR]: Request timeout while scraping {url}. The website might be slow or unavailable."
 #     except requests.exceptions.RequestException as e:
-#         return f"[ERROR]: Failed to scrape {url} with Firecrawl: {str(e)}"
+#         return f"[ERROR]: Failed to connect to Exa API: {str(e)}"
 #     except Exception as e:
-#         return f"[ERROR]: Unexpected error in scrape_website: {str(e)}"
+#         return f"[ERROR]: Unexpected error in exa_find_similar: {str(e)}"
 
 
 @mcp.tool()
-async def firecrawl_search_before(
+async def firecrawl_search(
     q: str,
     end_time: str,
     num_results: int = 5,
-    floor_date: str = "1900-01-01",
-    sources: Optional[List[str]] = None,
-    country: Optional[str] = None,
+    floor_date: str = "2000-01-01",
+    location: Optional[str] = None,
     language: Optional[str] = None,
     scrape: bool = False
 ) -> str:
-    """Search the web using Firecrawl with time constraints, returning only results published before end_time.
-    This tool uses Google Custom Search API through Firecrawl with date filtering to ensure results
-    are from before a specific cutoff date. Ideal for historical research and time-sensitive predictions.
+    """🔍 Firecrawl v2 Search - Time-constrained web search with enhanced reliability.
+    
+    Search the web using Firecrawl v2 API with strict time filtering. Returns only results 
+    published before end_time. Automatically handles retries and fallback to smaller result sets.
     
     Args:
         q: Search query string.
-        end_time: End date/time cutoff in "YYYY-MM-DD" or ISO8601 format (e.g., "2025-07-24" or "2025-10-11T15:30:00-07:00").
+        end_time: End date cutoff in "YYYY-MM-DD" format (e.g., "2025-08-03").
                   Only results published on or before this date will be returned.
-        num_results: Number of results to return (default: 5, max: 20).
-        floor_date: Earliest date boundary in "YYYY-MM-DD" format (default: "1900-01-01").
-        sources: Optional list of domains to search within (e.g., ["nytimes.com", "reuters.com"]).
-        country: Optional country code for localized search (e.g., "us", "jp", "uk").
-        language: Optional language code (e.g., "en", "ja", "zh").
-        scrape: If True, also scrape full content of each result (default: False, to save time).
+        num_results: Number of results to return (default: 5, recommended: 3-10, max: 20).
+        floor_date: Earliest date boundary in "YYYY-MM-DD" format (default: "2000-01-01").
+        location: Optional location for search (e.g., "us", "cn", "jp").
+        language: Optional language code (e.g., "en", "zh-CN", "ja").
+        scrape: If True, scrape full content of each result (slower, default: False).
     
     Returns:
-        JSON string containing search results with titles, URLs, snippets, published times, and sources.
+        JSON string with search results including titles, URLs, snippets, and timestamps.
+    
+    Note: If this tool times out, try using exa_search(q='...', end_published_date='...') instead.
     """
     if not FIRECRAWL_API_KEY:
-        return "[ERROR]: FIRECRAWL_API_KEY is not set, firecrawl_search_before is not available."
+        return "[ERROR]: FIRECRAWL_API_KEY is not set, firecrawl_search is not available."
     
     def _to_mmddyyyy(date_str: str) -> str:
-        """Convert date string to MM/DD/YYYY format for Google Custom Search tbs parameter."""
+        """Convert YYYY-MM-DD to MM/DD/YYYY for Google Custom Search tbs parameter."""
         try:
-            # Try parsing with dateutil if available (more flexible)
             if DATEUTIL_AVAILABLE:
-                parsed = dateutil_parser.parse(date_str)
-                d = parsed.date()
+                d = dateutil_parser.parse(date_str).date()
             else:
-                # Fallback: simple YYYY-MM-DD parsing
-                if 'T' in date_str:
-                    date_str = date_str.split('T')[0]
-                parts = date_str.split('-')
+                parts = date_str.split('T')[0].split('-')
                 if len(parts) != 3:
                     raise ValueError(f"Invalid date format: {date_str}")
-                year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
-                d = datetime.date(year, month, day)
-            
-            return f"{d.month}/{d.day}/{d.year}"
+                d = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+            return f"{d.month:02d}/{d.day:02d}/{d.year}"
         except Exception as e:
             raise ValueError(f"Failed to parse date '{date_str}': {str(e)}")
     
-    # Construct tbs (time-based search) parameter
+    # Construct tbs parameter for time-based search
     try:
         cd_max = _to_mmddyyyy(end_time)
         cd_min = _to_mmddyyyy(floor_date)
+        tbs_param = f"cdr:1,cd_min:{cd_min},cd_max:{cd_max}"
     except ValueError as e:
-        return f"[ERROR]: {str(e)}. Use YYYY-MM-DD or ISO8601 format."
+        return f"[ERROR]: {str(e)}. Please use YYYY-MM-DD format (e.g., '2025-08-03')."
     
-    tbs_param = f"cdr:1,cd_min:{cd_min},cd_max:{cd_max}"
+    # 🚀 自适应 limit：从请求的数量开始，失败时降级到 3
+    limits_to_try = [min(num_results, 10), 5, 3] if num_results > 3 else [3]
     
-    try:
-        api_url = "https://api.firecrawl.dev/v1/search"
-        
-        # Build payload
-        payload: Dict[str, Any] = {
-            "query": q,
-            "limit": max(1, min(num_results, 20)),
-            "tbs": tbs_param,
-            "scrape": scrape,
-        }
-        
-        # Add optional parameters
-        if sources:
-            payload["sources"] = sources
-        if country:
-            payload["country"] = country
-        if language:
-            payload["language"] = language
-        
-        headers = {
-            "Authorization": f"Bearer {FIRECRAWL_API_KEY}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        
-        response = await asyncio.to_thread(
-            lambda: requests.post(api_url, json=payload, headers=headers, timeout=30)
-        )
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Extract results (Firecrawl may use "data" or "results" key)
-        results = data.get("data", []) or data.get("results", [])
-        
-        if not results:
-            return json.dumps({
-                "message": f"No results found for query: {q} (before {end_time})",
+    for attempt, limit in enumerate(limits_to_try):
+        try:
+            # Firecrawl v2 API endpoint
+            api_url = "https://api.firecrawl.dev/v2/search"
+            
+            # Build v2 payload with enhanced options
+            payload = {
                 "query": q,
-                "end_time": end_time,
+                "limit": limit,
+                "sources": ["web"],  # v2: 必须指定 sources
                 "tbs": tbs_param,
-                "results": []
-            }, ensure_ascii=False, indent=2)
-        
-        # Format results
-        formatted = {
-            "query": q,
-            "num_results": len(results),
-            "tbs": tbs_param,
-            "end_time": end_time,
-            "floor_date": floor_date,
-            "results": []
-        }
-        
-        for i, r in enumerate(results):
-            formatted_result = {
-                "position": i + 1,
-                "title": r.get("title", ""),
-                "url": r.get("url", ""),
-                "snippet": (r.get("snippet") or r.get("description") or "")[:300],
-                "published_time": r.get("publishedTime") or r.get("date") or "",
-                "source": r.get("source") or "",
+                "timeout": 25000,  # 顶层超时 25秒
+                "ignoreInvalidURLs": True,  # 过滤无效URL，提高成功率
             }
             
-            # If scrape=True, include full content
-            if scrape and "markdown" in r:
-                formatted_result["content"] = r["markdown"][:5000]  # Limit content length
+            # Add optional parameters
+            if location:
+                payload["location"] = location
+            if language:
+                payload["lang"] = language
             
-            formatted["results"].append(formatted_result)
-        
-        return json.dumps(formatted, ensure_ascii=False, indent=2)
-        
-    except requests.exceptions.RequestException as e:
-        return f"[ERROR]: Failed to connect to Firecrawl Search API: {str(e)}"
-    except Exception as e:
-        return f"[ERROR]: Unexpected error in firecrawl_search_before: {str(e)}"
+            # Scrape options (only if scrape=True)
+            if scrape:
+                payload["scrapeOptions"] = {
+                    "formats": ["markdown"],
+                    "timeout": 15000,  # 单页抓取超时 15秒
+                    "waitFor": 0,  # 不等待 JS 渲染，加快速度
+                    "onlyMainContent": True,  # 只抓取主要内容
+                    "includeHtml": False,  # 不返回 HTML
+                    "includeTags": [],  # 不返回特定标签
+                    "excludeTags": ["nav", "footer", "aside"],  # 排除导航、页脚等
+                }
+            
+            headers = {
+                "Authorization": f"Bearer {FIRECRAWL_API_KEY}",
+                "Content-Type": "application/json",
+            }
+            
+            # 发送请求（单次，不在此层重试）
+            response = await asyncio.to_thread(
+                lambda: requests.post(api_url, json=payload, headers=headers, timeout=30)
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # v2 API 返回格式：{"success": true, "data": [...]}
+            if not data.get("success"):
+                error_msg = data.get("error", "Unknown error")
+                raise Exception(f"API returned success=false: {error_msg}")
+            
+            results = data.get("data", [])
+            
+            # 成功获取结果，格式化并返回
+            if not results:
+                return json.dumps({
+                    "message": f"No results found for query: {q} (before {end_time})",
+                    "query": q,
+                    "end_time": end_time,
+                    "tbs": tbs_param,
+                    "results": []
+                }, ensure_ascii=False, indent=2)
+            
+            # Format results
+            formatted = {
+                "query": q,
+                "num_results": len(results),
+                "end_time": end_time,
+                "floor_date": floor_date,
+                "tbs": tbs_param,
+                "results": []
+            }
+            
+            for i, r in enumerate(results):
+                formatted_result = {
+                    "position": i + 1,
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "snippet": (r.get("description") or r.get("snippet") or "")[:400],
+                    "published_time": r.get("publishedDate") or r.get("date") or "",
+                }
+                
+                # Add scraped content if available
+                if scrape and "markdown" in r:
+                    formatted_result["content"] = r["markdown"][:8000]  # 限制长度
+                
+                formatted["results"].append(formatted_result)
+            
+            return json.dumps(formatted, ensure_ascii=False, indent=2)
+            
+        except requests.exceptions.Timeout:
+            # 超时错误：尝试更小的 limit
+            if attempt < len(limits_to_try) - 1:
+                await asyncio.sleep(0.5)
+                continue
+            return (
+                f"[ERROR]: Request timeout after trying limits {limits_to_try}.\n\n"
+                f"⚠️  Alternative: Try using exa_search(q='{q}', end_published_date='{end_time}') instead."
+            )
+            
+        except requests.exceptions.RequestException as e:
+            # 网络/HTTP错误：尝试更小的 limit
+            if attempt < len(limits_to_try) - 1:
+                await asyncio.sleep(0.5)
+                continue
+            return (
+                f"[ERROR]: Failed to connect to Firecrawl API: {str(e)}\n\n"
+                f"⚠️  Alternative: Try using exa_search(q='{q}', end_published_date='{end_time}') instead."
+            )
+            
+        except Exception as e:
+            # 其他错误：尝试更小的 limit
+            if attempt < len(limits_to_try) - 1:
+                await asyncio.sleep(0.5)
+                continue
+            return f"[ERROR]: Unexpected error in firecrawl_search: {str(e)}"
+    
+    # 理论上不会到这里
+    return (
+        f"[ERROR]: All retry attempts failed.\n\n"
+        f"⚠️  Alternative: Try using exa_search(q='{q}', end_published_date='{end_time}') instead."
+    )
 
 
 @mcp.tool()
@@ -670,211 +617,14 @@ async def search_wiki_revision(
         return f"[ERROR]: Unexpected Error: An unexpected error occurred: {str(e)}"
 
 
-@mcp.tool()
-async def search_archived_webpage(url: str, year: int, month: int, day: int) -> str:
-    """Search the Wayback Machine (archive.org) for archived versions of a webpage at a specific date.
-    This tool queries the Internet Archive to find snapshots of web pages from the past.
-
-    Args:
-        url: The URL to search for in the Wayback Machine.
-        year: The target year (e.g., 2023). Values are auto-adjusted to valid range (1995-current year).
-        month: The target month (1-12). Values are auto-adjusted to valid range.
-        day: The target day (1-31). Values are auto-adjusted to valid range for the given month.
-
-    Returns:
-        Formatted archive information including archived URL, timestamp, and availability status.
-        Returns error message if URL not found in the archive or other issues occur.
-    """
-    # Handle empty URL
-    if not url or not url.strip():
-        return f"[ERROR]: Invalid URL: '{url}'. URL cannot be empty."
-
-    # Auto-add https:// if no protocol is specified
-    protocol_hint = ""
-    if not url.startswith(("http://", "https://")):
-        original_url = url
-        url = f"https://{url}"
-        protocol_hint = f"[NOTE]: Automatically added 'https://' to URL '{original_url}' -> '{url}'\n\n"
-
-    hint_message = ""
-    if ".wikipedia.org" in url:
-        hint_message = "[NOTE]: You are searching for a Wikipedia page. You can also use the `search_wiki_revision` tool to get the revision content of a Wikipedia page.\n\n"
-
-    # Check if specific date is requested
-    date = ""
-    adjustment_msg = ""
-    if year > 0 and month > 0:
-        # Auto-adjust date values and track changes
-        adjustments = []
-        original_year, original_month, original_day = year, month, day
-        current_year = datetime.datetime.now().year
-
-        # Adjust year to valid range
-        if year < 1995:
-            year = 1995
-            adjustments.append(
-                f"Year adjusted from {original_year} to 1995 (minimum supported)"
-            )
-        elif year > current_year:
-            year = current_year
-            adjustments.append(
-                f"Year adjusted from {original_year} to {current_year} (current year)"
-            )
-
-        # Adjust month to valid range
-        if month < 1:
-            month = 1
-            adjustments.append(f"Month adjusted from {original_month} to 1")
-        elif month > 12:
-            month = 12
-            adjustments.append(f"Month adjusted from {original_month} to 12")
-
-        # Adjust day to valid range for the given month/year
-        max_day = calendar.monthrange(year, month)[1]
-        if day < 1:
-            day = 1
-            adjustments.append(f"Day adjusted from {original_day} to 1")
-        elif day > max_day:
-            day = max_day
-            adjustments.append(
-                f"Day adjusted from {original_day} to {max_day} (max for {year}-{month:02d})"
-            )
-
-        # Update the date string with adjusted values
-        date = f"{year:04d}{month:02d}{day:02d}"
-
-        try:
-            # Validate the final adjusted date
-            datetime.datetime(year, month, day)
-        except ValueError as e:
-            return f"[ERROR]: Invalid date: {year}-{month:02d}-{day:02d}. {str(e)}"
-
-        # Prepare adjustment message if any changes were made
-        if adjustments:
-            adjustment_msg = (
-                "Date auto-adjusted: "
-                + "; ".join(adjustments)
-                + f". Using {date} instead.\n\n"
-            )
-
-    try:
-        base_url = "https://archive.org/wayback/available"
-        
-        # Prepare parameters
-        params = {"url": url}
-        if date:
-            params["timestamp"] = date
-        
-        # Make request with retry
-        retry_count = 0
-        max_retries = 5
-        data = None
-        
-        while retry_count < max_retries:
-            response = await asyncio.to_thread(
-                lambda: requests.get(base_url, params=params, timeout=30)
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            if "archived_snapshots" in data and "closest" in data["archived_snapshots"]:
-                break
-            
-            retry_count += 1
-            if retry_count < max_retries:
-                await asyncio.sleep(min(2 ** retry_count, 60))
-
-        if data and "archived_snapshots" in data and "closest" in data["archived_snapshots"]:
-            closest = data["archived_snapshots"]["closest"]
-            archived_url = closest["url"]
-            archived_timestamp = closest["timestamp"]
-            available = closest.get("available", True)
-
-            if not available:
-                if date:
-                    return (
-                        hint_message
-                        + adjustment_msg
-                        + protocol_hint
-                        + (
-                            f"Archive Status: Snapshot exists but is not available\n\n"
-                            f"Original URL: {url}\n"
-                            f"Requested Date: {year:04d}-{month:02d}-{day:02d}\n"
-                            f"Closest Snapshot: {archived_timestamp}\n\n"
-                            f"Try a different date or use the `scrape_website` tool for current content."
-                        )
-                    )
-                else:
-                    return (
-                        hint_message
-                        + protocol_hint
-                        + (
-                            f"Archive Status: Most recent snapshot exists but is not available\n\n"
-                            f"Original URL: {url}\n"
-                            f"Most Recent Snapshot: {archived_timestamp}\n\n"
-                            f"The URL may have been archived but access is restricted."
-                        )
-                    )
-
-            # Format timestamp for better readability
-            try:
-                dt = datetime.datetime.strptime(archived_timestamp, "%Y%m%d%H%M%S")
-                formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-            except Exception:
-                formatted_time = archived_timestamp
-
-            if date:
-                return (
-                    protocol_hint
-                    + hint_message
-                    + adjustment_msg
-                    + (
-                        f"Archive Found: Archived version located\n\n"
-                        f"Original URL: {url}\n"
-                        f"Requested Date: {year:04d}-{month:02d}-{day:02d}\n"
-                        f"Archived URL: {archived_url}\n"
-                        f"Archived Timestamp: {formatted_time}\n"
-                    )
-                    + "\n\nHint: You can use the `scrape_website` tool to get the content of the archived URL."
-                )
-            else:
-                return (
-                    protocol_hint
-                    + hint_message
-                    + (
-                        f"Archive Found: Most recent archived version\n\n"
-                        f"Original URL: {url}\n"
-                        f"Archived URL: {archived_url}\n"
-                        f"Archived Timestamp: {formatted_time}\n"
-                    )
-                    + "\n\nHint: You can use the `scrape_website` tool to get the content of the archived URL."
-                )
-        else:
-            return (
-                protocol_hint
-                + hint_message
-                + (
-                    f"Archive Not Found: No archived versions available\n\n"
-                    f"Original URL: {url}\n\n"
-                    f"The URL '{url}' has not been archived by the Wayback Machine.\n"
-                    f"You may want to:\n"
-                    f"- Check if the URL is correct\n"
-                    f"- Try a different date\n"
-                    f"- Use the `scrape_website` tool to get current content\n"
-                )
-            )
-
-    except requests.exceptions.Timeout:
-        return f"[ERROR]: Network Error: Request timed out while querying Wayback Machine for '{url}'"
-
-    except requests.exceptions.RequestException as e:
-        return f"[ERROR]: Network Error: Failed to connect to Wayback Machine: {str(e)}"
-
-    except ValueError as e:
-        return f"[ERROR]: Data Error: Failed to parse response from Wayback Machine: {str(e)}"
-
-    except Exception as e:
-        return f"[ERROR]: Unexpected Error: An unexpected error occurred: {str(e)}"
+# ❌ 已移除的工具：
+# - search_archived_webpage: archive.org 网络连接极不稳定，已删除
+# - exa_find_similar: 使用频率低，已注释
+# 
+# ✅ 推荐使用的替代方案：
+# 1. exa_search(q='...', end_published_date='YYYY-MM-DD') - 主要工具，最稳定
+# 2. firecrawl_search(q='...', end_time='YYYY-MM-DD') - 备用工具，支持中文
+# 3. search_wiki_revision(entity='...', year=YYYY, month=MM) - 维基百科历史版本
 
 
 if __name__ == "__main__":

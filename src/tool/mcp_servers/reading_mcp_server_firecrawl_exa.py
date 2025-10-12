@@ -29,7 +29,7 @@ EXA_API_KEY = os.environ.get("EXA_API_KEY", "")
 
 
 async def scrape_with_firecrawl(url: str) -> str:
-    """Internal helper function to scrape webpage content using Firecrawl.
+    """Internal helper function to scrape webpage content using Firecrawl v2 API.
     
     Args:
         url: The URL of the webpage to scrape.
@@ -41,12 +41,18 @@ async def scrape_with_firecrawl(url: str) -> str:
         return "[ERROR]: FIRECRAWL_API_KEY is not set, cannot scrape website."
     
     try:
-        # Firecrawl API endpoint
-        api_url = "https://api.firecrawl.dev/v1/scrape"
+        # Firecrawl v2 API endpoint
+        api_url = "https://api.firecrawl.dev/v2/scrape"
         
         payload = {
             "url": url,
-            "formats": ["markdown"],  # Only need Markdown format
+            "formats": ["markdown"],
+            "timeout": 30000,  # 顶层超时 60秒
+            "onlyMainContent": True,  # 只提取主要内容
+            "waitFor": 0,  # 不等待JS渲染，加快速度
+            "mobile": False,  # 使用桌面版
+            "skipTlsVerification": False,
+            "removeBase64Images": True,  # 移除base64图片，减少内容大小
         }
         
         headers = {
@@ -56,27 +62,27 @@ async def scrape_with_firecrawl(url: str) -> str:
         
         # Use asyncio.to_thread to make synchronous requests non-blocking
         response = await asyncio.to_thread(
-            lambda: requests.post(api_url, json=payload, headers=headers, timeout=90)
+            lambda: requests.post(api_url, json=payload, headers=headers, timeout=70)
         )
         response.raise_for_status()
         
         data = response.json()
         
-        # Check if successful
+        # v2 API 返回格式：{"success": true, "data": {...}}
         if not data.get("success"):
             error_msg = data.get("error", "Unknown error")
             return f"[ERROR]: Firecrawl scraping failed: {error_msg}"
         
-        # Extract Markdown content
+        # Extract Markdown content from v2 response
         result_data = data.get("data", {})
         markdown_content = result_data.get("markdown", "")
         
         if not markdown_content:
             return "[ERROR]: No content extracted from the webpage."
         
-        # Return content (limit length)
-        if len(markdown_content) > 10000:  # 🚀 优化：从15000降低到10000
-            markdown_content = markdown_content[:10000] + "\n\n... (content truncated due to length)"
+        # Return content (limit length to avoid token overflow)
+        if len(markdown_content) > 12000:  # 提高到12000，平衡内容完整性和token消耗
+            markdown_content = markdown_content[:12000] + "\n\n... (content truncated due to length)"
         
         return markdown_content
         

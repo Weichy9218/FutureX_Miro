@@ -49,7 +49,7 @@ main_agent:
   max_turns: 6  # 从 -1（无限制）改为 6 轮
   
   # 🚀 优化4: 限制每轮工具调用次数
-  max_tool_calls_per_turn: 6  # 从 10 降低到 8
+  max_tool_calls_per_turn: 6  # 从 10 降低到 6
   
   input_process:
     hint_generation: false
