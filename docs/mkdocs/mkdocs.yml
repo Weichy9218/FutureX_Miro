@@ -1,0 +1,99 @@
+site_name: MiroFlow
+
+theme:
+  name: material
+  user_color_mode_toggle: true
+  highlightjs: true
+  hljs_languages:
+    - yaml
+    - rust
+  locale: en
+  # favicon: assets/m_logo.png
+
+  features:
+    - header.autohide
+    - navigation.tabs
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+
+
+repo_name: MiroFlow
+repo_url: https://github.com/MiroMindAI/MiroFlow
+
+
+nav:
+  - Introduction: 
+    - News & Updates: index.md
+    - License: license.md
+
+  - Quick Start:
+    - Quickstart: quickstart.md
+    - Core Concepts: core_concepts.md
+    - YAML Configuration: yaml_config.md
+
+  - Evaluation:
+    - Overview: evaluation_overview.md
+    - Benchmarks: 
+      - GAIA-Validation:
+        - Prerequisites: gaia_validation_prerequisites.md
+        - Claude-3.7-Sonnet: gaia_validation_claude37sonnet.md
+        - GPT-5: gaia_validation_gpt5.md
+        - MiroThinker: gaia_validation_mirothinker.md
+      - GAIA-Validation-Text-Only: gaia_validation_text_only.md
+      - GAIA-Test: gaia_test.md
+      - FutureX: futurex.md
+      - xBench-DeepSearch: xbench_ds.md
+      - FinSearchComp: finsearchcomp.md
+    - Download Datasets: download_datasets.md
+    - Add New Benchmarks: contribute_benchmarks.md
+
+  - Tools: 
+    - Overview: tool_overview.md
+    - Tools:
+      - tool-reasoning: tool_reasoning.md
+      - tool-reasoning-os: tool_reasoning_os.md
+      - tool-image-video: tool_vqa.md
+      - tool-image-video-os: tool_vqa_os.md
+      - tool-audio-os: tool_audio_os.md
+      - tool-searching: tool_searching.md
+      - tool-python: tool_python.md
+    - Advanced Features:
+      - E2B Advanced Features: e2b_advanced_features.md
+    - Add New Tools: contribute_tools.md
+
+  - LLM Clients: 
+    - Overview: llm_clients_overview.md
+    - Models:
+      - MiroThinker: mirothinker.md
+      - Claude-3.7-Sonnet: 
+        - Official SDK: claude-3.7-sonnet.md
+        - OpenRouter: openrouter-claude-3.7-sonnet.md
+      - OpenAI-GPT: openai-gpt.md
+    - Add New LLM Clients: contribute_llm_clients.md
+
+  - Resources: 
+    - 📚 All About Agents: all_about_agents.md
+    - 📊 Open Source Data: data.md
+    - 📱 Applications: applications.md
+    - 🐛 FAQs: faqs.md
+    - 📝 Contributors: contributors.md
+
+
+extra:
+  version:
+    provider: mike

@@ -1,0 +1,3 @@
+- benchmark.execution.max_tasks=3
+- benchmark.execution.max_concurrent=3
+- output_dir=logs/test_run

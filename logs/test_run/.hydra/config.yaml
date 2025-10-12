@@ -1,0 +1,47 @@
+benchmark:
+  name: futurex-past
+  data:
+    metadata_file: standardized_data_past.jsonl
+    whitelist: []
+    data_dir: ${data_dir}/futurex
+  execution:
+    max_tasks: 3
+    max_concurrent: 3
+    pass_at_k: 1
+  openai_api_key: skip_evaluation
+main_agent:
+  prompt_class: MainAgentPromptBoxedAnswer
+  llm:
+    provider_class: GPT5OpenAIClient
+    model_name: openai/gpt-5
+    async_client: true
+    temperature: 1.0
+    top_p: 1.0
+    min_p: 0.0
+    top_k: -1
+    max_tokens: 16000
+    reasoning_effort: low
+    openai_api_key: ${oc.env:OPENROUTER_API_KEY,???}
+    openai_base_url: ${oc.env:OPENROUTER_BASE_URL,https://openrouter.ai/api/v1}
+    openrouter_provider: ''
+    disable_cache_control: true
+    keep_tool_result: -1
+    oai_tool_thinking: false
+  tool_config:
+  - tool-searching-firecrawl-exa
+  - tool-reading-firecrawl-exa
+  max_turns: 6
+  max_tool_calls_per_turn: 6
+  input_process:
+    hint_generation: false
+    hint_llm_base_url: ${oc.env:HINT_LLM_BASE_URL,https://api.openai.com/v1}
+  output_process:
+    final_answer_extraction: false
+    final_answer_llm_base_url: ${oc.env:FINAL_ANSWER_LLM_BASE_URL,https://api.openai.com/v1}
+  openai_api_key: ${oc.env:OPENROUTER_API_KEY,???}
+  add_message_id: true
+  keep_tool_result: -1
+  chinese_context: ${oc.env:CHINESE_CONTEXT,false}
+sub_agents: null
+output_dir: logs/test_run
+data_dir: ${oc.env:DATA_DIR,data}
