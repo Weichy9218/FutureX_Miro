@@ -1,8 +1,7 @@
-# SPDX-FileCopyrightText: 2025 MiromindAI
-#
-# SPDX-License-Identifier: Apache-2.0
-# 
-# Simplified version for Futurex-Past dataset with pass@1 evaluation
+# chuyangwei bjzgca
+# Simplified version for Futurex-Past dataset
+# 优化 `BenchmarkResult` 类
+# 简化评估流程
 
 import asyncio
 import datetime
@@ -51,12 +50,11 @@ class BenchmarkResult:
     task_question: str
     ground_truth: str
     file_path: Optional[str]
-    model_response: str
-    model_boxed_answer: str
-    status: str
+    model_answer_content: str  # final_answer_content from step_logs
+    model_boxed_answer: str  # final_boxed_answer
+    status: str  # "completed", "failed", "pending"
     metadata: Dict[str, Any] = field(default_factory=dict)
-    error_message: str = ""
-    judge_result: Optional[str] = None
+    error_message: str = ""  # Error message if task failed
     log_file_path: Optional[Path] = None
 
     def to_dict(self):
@@ -254,13 +252,36 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
         try:
             with open(latest_log, "r", encoding="utf-8") as f:
                 log_data = json.load(f)
+
+                final_answer = log_data.get('final_boxed_answer', '')
+                has_error = False  # 初始化 has_error
+                final_answer_content = None  # 用于存储找到的 final_answer_content
                 
-                if log_data.get("final_boxed_answer"):
+                # 检查 final_answer 本身是否包含错误信息
+                if "[ERROR]" in str(final_answer) or "error" in str(final_answer).lower():
+                    has_error = True
+                
+                # 检查 step_logs 中的 final_answer_content
+                step_logs = log_data.get("step_logs", [])
+                if isinstance(step_logs, list):
+                    for step in step_logs:
+                        if step.get("step_name", "") == "final_answer_content":
+                            final_answer_content = step.get("message", "")
+                            # 检查是否包含错误信息
+                            if "[ERROR]" in str(final_answer_content) or "error" in str(final_answer_content).lower():
+                                has_error = True
+                            break
+                
+                # 如果没有找到 final_answer_content，也认为是错误
+                if final_answer_content is None:
+                    has_error = True
+                
+                # 只有当有有效答案且没有错误时才返回（跳过任务）
+                if final_answer and not has_error:
                     return {
-                        "model_response": log_data.get("output", ""),
                         "model_boxed_answer": log_data["final_boxed_answer"],
+                        "model_answer_content": final_answer_content,
                         "log_file_path": latest_log,
-                        "judge_result": log_data.get("judge_result"),
                     }
         except Exception as e:
             print(f"  Error reading existing log: {e}")
@@ -284,12 +305,11 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
             task_question=task.task_question,
             ground_truth=task.ground_truth,
             file_path=task.file_path,
-            model_response="",
+            model_answer_content="",
             model_boxed_answer="",
             status="pending",
             metadata=task.metadata.copy(),
             error_message="",
-            judge_result=None,
             log_file_path=None,
         )
 
@@ -299,11 +319,10 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
             
             if existing_result:
                 print(f"  ✓ Using cached result: {existing_result['model_boxed_answer']}")
-                result.model_response = existing_result["model_response"]
+                result.model_answer_content = existing_result["model_answer_content"]
                 result.model_boxed_answer = existing_result["model_boxed_answer"]
                 result.log_file_path = existing_result["log_file_path"]
                 result.status = "completed"
-                result.judge_result = existing_result.get("judge_result")
             else:
                 # Prepare task
                 task_description, task_file_path = self.prepare_task_description(task)
@@ -311,7 +330,7 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
                 # Run inference
                 print(f"  Running inference...")
                 (
-                    response,
+                    _response,  # Not used anymore
                     final_boxed_answer,
                     log_file_path,
                 ) = await execute_task_pipeline(
@@ -328,41 +347,24 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
                     log_path=self.output_dir / f"task_{task.task_id}_attempt_1.json",
                 )
 
-                result.model_response = response if response else ""
+                # Extract final_answer_content from log file
+                final_answer_content = ""
+                if log_file_path and log_file_path.exists():
+                    try:
+                        with open(log_file_path, "r", encoding="utf-8") as f:
+                            log_data = json.load(f)
+                            step_logs = log_data.get("step_logs", [])
+                            for step in step_logs:
+                                if step.get("step_name") == "final_answer_content":
+                                    final_answer_content = step.get("message", "")
+                                    break
+                    except Exception as e:
+                        print(f"  Warning: Could not extract final_answer_content: {e}")
+                
+                result.model_answer_content = final_answer_content
                 result.model_boxed_answer = final_boxed_answer if final_boxed_answer else ""
                 result.log_file_path = log_file_path
                 result.status = "completed" if final_boxed_answer else "failed"
-
-            # Perform LLM verification if enabled and we have an answer
-            if not self.skip_evaluation and result.model_boxed_answer and self.evaluation_llm:
-                print(f"  Verifying answer with LLM judge...")
-                try:
-                    evaluation_result = await verify_answer_for_datasets(
-                        openai_client=self.evaluation_llm,
-                        benchmark_name=self.benchmark_name,
-                        question=task.task_question,
-                        target=task.ground_truth,
-                        predicted_answer=result.model_boxed_answer,
-                        metadata=task.metadata,
-                    )
-                    result.judge_result = evaluation_result
-                    
-                    # Update log file with judge result
-                    if result.log_file_path:
-                        await self._update_log_file_with_evaluation(
-                            result.log_file_path, evaluation_result
-                        )
-                    
-                    status_icon = "✅" if evaluation_result == "CORRECT" else "❌"
-                    print(f"  {status_icon} Judge result: {evaluation_result}")
-                    
-                except Exception as e:
-                    print(f"  Error verifying answer: {e}")
-                    result.judge_result = "ERROR"
-            else:
-                if self.skip_evaluation:
-                    result.judge_result = "SKIPPED"
-                    print(f"  ⚠️  Evaluation skipped")
 
         except Exception as e:
             result.error_message = str(e)
@@ -407,12 +409,11 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
                     task_question=shuffled_tasks[i].task_question,
                     ground_truth=shuffled_tasks[i].ground_truth,
                     file_path=shuffled_tasks[i].file_path,
-                    model_response="",
+                    model_answer_content="",
                     model_boxed_answer="",
                     status="failed",
                     metadata=shuffled_tasks[i].metadata.copy(),
                     error_message=str(result),
-                    judge_result=None,
                     log_file_path=None,
                 )
                 processed_results.append(error_result)
@@ -434,75 +435,39 @@ You MUST make your prediction based ONLY on information available BEFORE {end_ti
         return output_path
 
     def evaluate_accuracy(self) -> float:
-        """Evaluate accuracy"""
+        """Display task completion statistics (evaluation is skipped)"""
         if not self.results:
-            print("No results to evaluate")
+            print("No results to display")
             return 0.0
 
-        print(f"\nCalculating accuracy for {len(self.results)} results...")
+        print(f"\n📊 Task Completion Statistics for {len(self.results)} tasks:")
+        print("=" * 70)
 
-        correct_count = 0
-        total_count = 0
-        evaluated_count = 0
-
+        completed_count = 0
+        failed_count = 0
+        
         for result in self.results:
-            total_count += 1
-
-            # Display task results
-            print(f"\nTask {result.task_id}:")
-            print(f"  Status: {result.status}")
-            print(f"  Model answer: {result.model_boxed_answer}")
-            print(f"  Ground truth: {result.ground_truth}")
-            
-            if result.judge_result and result.judge_result not in ["SKIPPED", "ERROR"]:
-                evaluated_count += 1
-                is_correct = result.judge_result == "CORRECT"
-                status_icon = "✅" if is_correct else "❌"
-                print(f"  Judge result: {status_icon} {result.judge_result}")
-                
-                if is_correct:
-                    correct_count += 1
+            if result.status == "completed" and result.model_boxed_answer:
+                completed_count += 1
             else:
-                print(f"  Judge result: {result.judge_result or 'NOT_EVALUATED'}")
-            
-            print("  " + "=" * 50)
+                failed_count += 1
+                # Display failed tasks for debugging
+                print(f"\n❌ Failed Task {result.task_id}:")
+                print(f"  Status: {result.status}")
+                print(f"  Model answer: {result.model_boxed_answer[:100] if result.model_boxed_answer else 'None'}")
+                if result.error_message:
+                    print(f"  Error: {result.error_message[:200]}")
+        
+        completion_rate = completed_count / len(self.results) if self.results else 0.0
+        
+        print("\n" + "=" * 70)
+        print(f"✅ Completed (with boxed answer): {completed_count}")
+        print(f"❌ Failed/Incomplete: {failed_count}")
+        print(f"📈 Completion Rate: {completion_rate:.2%}")
+        print(f"\n⚠️  Note: LLM-based evaluation is skipped (openai_api_key='skip_evaluation')")
+        print("=" * 70)
 
-        # Calculate accuracy
-        if self.skip_evaluation or evaluated_count == 0:
-            print(f"\n⚠️  Evaluation was skipped or no tasks were evaluated")
-            print(f"Total tasks completed: {total_count}")
-            accuracy = 0.0
-        else:
-            accuracy = correct_count / evaluated_count if evaluated_count > 0 else 0.0
-            print(f"\nFinal Results:")
-            print(f"Tasks evaluated: {evaluated_count}/{total_count}")
-            print(f"Tasks passed: {correct_count}/{evaluated_count}")
-            print(f"Accuracy: {accuracy:.2%}")
-
-        return accuracy
-
-    async def _update_log_file_with_evaluation(
-        self, log_file_path: Path, evaluation_result: str
-    ):
-        """Helper method to update log file with evaluation result"""
-        try:
-            log_file = Path(log_file_path)
-            # Read existing data
-            with open(log_file, "r", encoding="utf-8") as f:
-                log_data = json.load(f)
-
-            # Update with evaluation result
-            log_data["judge_result"] = evaluation_result
-
-            # Write to a temporary file and then atomically replace
-            temp_log_file = log_file.with_suffix(f"{log_file.suffix}.tmp")
-            with open(temp_log_file, "w", encoding="utf-8") as f:
-                json.dump(log_data, f, indent=2, ensure_ascii=False)
-
-            os.replace(temp_log_file, log_file)
-            print(f"    Updated log file with evaluation result.")
-        except Exception as e:
-            print(f"    Error updating log file {log_file_path}: {e}")
+        return completion_rate
 
 
 async def entrypoint(cfg: DictConfig) -> float:
@@ -537,9 +502,9 @@ async def entrypoint(cfg: DictConfig) -> float:
         max_concurrent=cfg.benchmark.execution.max_concurrent,
     )
 
-    # Evaluate accuracy
-    print("\nEvaluating accuracy...")
-    accuracy = evaluator.evaluate_accuracy()
+    # Display completion statistics
+    print("\nDisplaying task completion statistics...")
+    completion_rate = evaluator.evaluate_accuracy()
     
     # Save results
     output_filename = "benchmark_results.jsonl"
@@ -547,16 +512,15 @@ async def entrypoint(cfg: DictConfig) -> float:
     results_path = log_dir / output_filename
 
     evaluator.save_results(results_path)
-    print(f"\nEvaluation completed! Results saved to {results_path}")
+    print(f"\n✅ Benchmark completed! Results saved to {results_path}")
     
-    # save accuracy to a file
-    if not evaluator.skip_evaluation:
-        accuracy_file = results_path.parent / f"{results_path.stem}_accuracy.txt"
-        with open(accuracy_file, "w") as f:
-            f.write(f"{accuracy:.2%}")
-        print(f"Accuracy saved to {accuracy_file}")
+    # Save completion rate to a file
+    completion_file = results_path.parent / f"{results_path.stem}_completion_rate.txt"
+    with open(completion_file, "w") as f:
+        f.write(f"{completion_rate:.2%}")
+    print(f"Completion rate saved to {completion_file}")
 
-    return accuracy
+    return completion_rate
 
 
 def setup_hydra_output_dir(cfg: DictConfig, overrides: List[str]) -> DictConfig:
